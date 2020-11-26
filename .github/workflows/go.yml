@@ -18,3 +18,5 @@ jobs:
 
       - name: Build
         run: go get -v golang.org/x/tools/gopls@v0.5.3
+        env:
+          GO111MODULE: on
