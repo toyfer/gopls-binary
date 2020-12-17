@@ -10,7 +10,7 @@ jobs:
     name: Build and release
     runs-on: windows-latest
     env:
-      GOPLS_VERSION: v0.5.5
+      GOPLS_VERSION: v0.6.0
     steps:
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
