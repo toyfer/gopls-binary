@@ -9,6 +9,8 @@ jobs:
   build:
     name: Build and release
     runs-on: windows-latest
+    env:
+      GOPLS_VERSION: v0.5.5
     steps:
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
@@ -27,7 +29,6 @@ jobs:
           "$hash  gopls-$env:GOPLS_VERSION.7z" | Out-File -Encoding ascii -File sha256sum.txt
         env:
           GO111MODULE: on
-          GOPLS_VERSION: v0.5.5
 
       - name: Create Release
         id: create_release
@@ -38,7 +39,7 @@ jobs:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
           body: |
-            gopls v0.5.5 binary for Windows 64-bit.
+            gopls ${{ env.GOPLS_VERSION }} binary for Windows 64-bit.
           draft: false
           prerelease: false
 
@@ -49,8 +50,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./gopls-v0.5.5.7z
-          asset_name: gopls-v0.5.5.7z
+          asset_path: ./gopls-${{ env.GOPLS_VERSION }}.7z
+          asset_name: gopls-${{ env.GOPLS_VERSION }}.7z
           asset_content_type: application/octet-stream
 
       - name: Upload Release checksum
