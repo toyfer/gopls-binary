@@ -30,37 +30,11 @@ jobs:
         env:
           GO111MODULE: on
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create and Upload Release
+        id: upload-release
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
           body: |
             gopls ${{ env.GOPLS_VERSION }} binary for Windows 64-bit.
-          draft: false
-          prerelease: false
-
-      - name: Upload Release archive
-        id: upload-release-binary
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./gopls-${{ env.GOPLS_VERSION }}.7z
-          asset_name: gopls-${{ env.GOPLS_VERSION }}.7z
-          asset_content_type: application/octet-stream
-
-      - name: Upload Release checksum
-        id: upload-release-checksum
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./sha256sum.txt
-          asset_name: sha256sum.txt
-          asset_content_type: text/plain
+          artifacts: "gopls-${{ env.GOPLS_VERSION }}.7z,sha256sum.txt"
+          token: ${{ secrets.GITHUB_TOKEN }}
