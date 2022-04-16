@@ -19,7 +19,7 @@ jobs:
 
       - name: Build
         run: |
-          go get -v golang.org/x/tools/gopls@$env:GOPLS_VERSION
+          go install -v golang.org/x/tools/gopls@$env:GOPLS_VERSION
           $dir = Get-Location
           cd $env:USERPROFILE\go\bin
           &"c:\Program Files\7-Zip\7z.exe" a $dir\gopls-$env:GOPLS_VERSION.7z gopls.exe
