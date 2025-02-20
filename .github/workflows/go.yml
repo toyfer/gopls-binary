@@ -2,23 +2,45 @@ name: Go
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main  # メインブランチへのプッシュ時に実行
 
 jobs:
   build:
     name: Build and release
     runs-on: windows-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.24'  # 最新の安定版Goを使用
 
-      - name: Build
+      - name: Get latest gopls version
+        id: get_version
         run: |
           go install -v golang.org/x/tools/gopls@latest
           $goplsVersion = (gopls version) -replace "gopls v",""
+          echo "GOPLS_VERSION=$goplsVersion" >> $env:GITHUB_OUTPUT
+
+      - name: Check existing release
+        id: check_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $release = gh release view gopls-${{ steps.get_version.outputs.GOPLS_VERSION }} 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            echo "RELEASE_EXISTS=true" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "RELEASE_EXISTS=false" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build
+        if: steps.check_release.outputs.RELEASE_EXISTS == 'false'
+        run: |
+          $goplsVersion = "${{ steps.get_version.outputs.GOPLS_VERSION }}"
           $dir = Get-Location
           cd $env:USERPROFILE\go\bin
           &"c:\Program Files\7-Zip\7z.exe" a $dir\gopls-$goplsVersion.7z gopls.exe
@@ -30,10 +52,18 @@ jobs:
           GO111MODULE: on
 
       - name: Create and Upload Release
+        if: steps.check_release.outputs.RELEASE_EXISTS == 'false'
         id: upload-release
         uses: ncipollo/release-action@v1
         with:
+          name: gopls-${{ steps.get_version.outputs.GOPLS_VERSION }}
+          tag: gopls-${{ steps.get_version.outputs.GOPLS_VERSION }}
           body: |
-            gopls ${{ steps.build.outputs.gopls_version }} binary for Windows 64-bit.
+            gopls ${{ steps.get_version.outputs.GOPLS_VERSION }} binary for Windows 64-bit.
           artifacts: "gopls-*.7z,sha256sum.txt"
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify no update needed
+        if: steps.check_release.outputs.RELEASE_EXISTS == 'true'
+        run: |
+          echo "Release for gopls ${{ steps.get_version.outputs.GOPLS_VERSION }} already exists. No update needed."
