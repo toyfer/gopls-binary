@@ -9,24 +9,23 @@ jobs:
   build:
     name: Build and release
     runs-on: windows-latest
-    env:
-      GOPLS_VERSION: v0.15.3
     steps:
-      - name: Set up Go 1.x
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ^1.20
+          go-version: '1.24'  # 最新の安定版Goを使用
 
       - name: Build
         run: |
-          go install -v golang.org/x/tools/gopls@$env:GOPLS_VERSION
+          go install -v golang.org/x/tools/gopls@latest
+          $goplsVersion = (gopls version) -replace "gopls v",""
           $dir = Get-Location
           cd $env:USERPROFILE\go\bin
-          &"c:\Program Files\7-Zip\7z.exe" a $dir\gopls-$env:GOPLS_VERSION.7z gopls.exe
+          &"c:\Program Files\7-Zip\7z.exe" a $dir\gopls-$goplsVersion.7z gopls.exe
 
           cd $dir
-          $hash = (Get-FileHash -Algorithm SHA256 gopls-$env:GOPLS_VERSION.7z).Hash
-          "$hash  gopls-$env:GOPLS_VERSION.7z" | Out-File -Encoding ascii -File sha256sum.txt
+          $hash = (Get-FileHash -Algorithm SHA256 gopls-$goplsVersion.7z).Hash
+          "$hash  gopls-$goplsVersion.7z" | Out-File -Encoding ascii -File sha256sum.txt
         env:
           GO111MODULE: on
 
@@ -35,6 +34,6 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           body: |
-            gopls ${{ env.GOPLS_VERSION }} binary for Windows 64-bit.
-          artifacts: "gopls-${{ env.GOPLS_VERSION }}.7z,sha256sum.txt"
+            gopls ${{ steps.build.outputs.gopls_version }} binary for Windows 64-bit.
+          artifacts: "gopls-*.7z,sha256sum.txt"
           token: ${{ secrets.GITHUB_TOKEN }}
