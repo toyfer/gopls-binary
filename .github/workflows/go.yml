@@ -22,8 +22,9 @@ jobs:
         id: get_version
         run: |
           go install -v golang.org/x/tools/gopls@latest
-          $goplsVersion = (gopls version) -replace "gopls v",""
+          $goplsVersion = (gopls version).Split(" ")[1]
           echo "GOPLS_VERSION=$goplsVersion" >> $env:GITHUB_OUTPUT
+        
 
       - name: Check existing release
         id: check_release
@@ -36,6 +37,7 @@ jobs:
           } else {
             echo "RELEASE_EXISTS=false" >> $env:GITHUB_OUTPUT
           }
+        
 
       - name: Build
         if: steps.check_release.outputs.RELEASE_EXISTS == 'false'
