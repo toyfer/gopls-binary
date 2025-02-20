@@ -26,23 +26,7 @@ jobs:
           $goplsVersion = (gopls version).Split(" ")[1].Trim()
           echo "GOPLS_VERSION=$goplsVersion" >> $env:GITHUB_OUTPUT
 
-      - name: Check existing release
-        id: check_release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          $releaseName = "gopls-${{ steps.get_version.outputs.GOPLS_VERSION }}"
-          $release = gh release view $releaseName 2>&1
-          if ($LASTEXITCODE -eq 0) {
-            echo "RELEASE_EXISTS=true" >> $env:GITHUB_OUTPUT
-            echo "Release $releaseName already exists."
-          } else {
-            echo "RELEASE_EXISTS=false" >> $env:GITHUB_OUTPUT
-            echo "Release $releaseName does not exist."
-          }
-
       - name: Build
-        if: steps.check_release.outputs.RELEASE_EXISTS == 'false'
         run: |
           $goplsVersion = "${{ steps.get_version.outputs.GOPLS_VERSION }}"
           $dir = Get-Location
@@ -55,19 +39,34 @@ jobs:
         env:
           GO111MODULE: on
 
-      - name: Create and Upload Release
-        if: steps.check_release.outputs.RELEASE_EXISTS == 'false'
-        id: upload-release
-        uses: ncipollo/release-action@v1
-        with:
-          name: gopls-${{ steps.get_version.outputs.GOPLS_VERSION }}
-          tag: gopls-${{ steps.get_version.outputs.GOPLS_VERSION }}
-          body: |
-            gopls ${{ steps.get_version.outputs.GOPLS_VERSION }} binary for Windows 64-bit.
-          artifacts: "gopls-*.7z,sha256sum.txt"
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check and create release
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $releaseName = "gopls-${{ steps.get_version.outputs.GOPLS_VERSION }}"
+          $releaseTag = "gopls-${{ steps.get_version.outputs.GOPLS_VERSION }}"
+          $release = gh release view $releaseTag 2>&1
+          if ($release -match "release not found") {
+            echo "Creating new release $releaseName"
+            gh release create $releaseTag -t $releaseName -n "gopls ${{ steps.get_version.outputs.GOPLS_VERSION }} binary for Windows 64-bit."
+            echo "RELEASE_CREATED=true" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "Release $releaseName already exists"
+            echo "RELEASE_CREATED=false" >> $env:GITHUB_OUTPUT
+          }
+          echo "RELEASE_TAG=$releaseTag" >> $env:GITHUB_OUTPUT
+
+      - name: Upload 7z artifact
+        if: steps.create_release.outputs.RELEASE_CREATED == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $goplsVersion = "${{ steps.get_version.outputs.GOPLS_VERSION }}"
+          $artifactPath = "gopls-$goplsVersion.7z"
+          gh release upload ${{ steps.create_release.outputs.RELEASE_TAG }} $artifactPath sha256sum.txt
 
       - name: Notify no update needed
-        if: steps.check_release.outputs.RELEASE_EXISTS == 'true'
+        if: steps.create_release.outputs.RELEASE_CREATED == 'false'
         run: |
           echo "Release for gopls ${{ steps.get_version.outputs.GOPLS_VERSION }} already exists. No update needed."
